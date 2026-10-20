@@ -41,7 +41,7 @@ Please include:
 - The mod's log file from Logs/ (the file for this mod)
 - What you were doing when it happened
 
-Report it on the mod's comments page or on GitHub: [Link to your GitHub repo]
+Report it on the mod's comments page or on GitHub: (https://github.com/Nobitskii/improved-specialized-industrial-zones)
 
 IMPORTANT
 - This mod REPLACES the original Specialized Industrial Zones. Do not run both at once, because they share the same names.
