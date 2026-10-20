@@ -1,48 +1,35 @@
-# Specialized Industrial Zones
+REWORKED SPECIALIZED INDUSTRIAL ZONE
 
-Adds new industrial zoning options to the game that are restricted to specific industrial resources.
-These zones will spawn the same buildings you're used to from the general industrial zone,
-but they are filtered to only spawn buildings that produce the resource of the zone.
+Adds specialized industrial zones to Cities: Skylines II, so you can zone industry for one resource chain instead of all of it.
 
-**NOTE**: The production buildings are mostly the same across various resources, as they are capable of
-producing any resource. However, storage buildings are mostly distinct for the raw resources they store
-so you will never e.g. see a wood pile spawn in an oil zone.
+ZONES
+- Forestry
+- Agriculture
+- Ore
+- Oil
 
-# Zone Types
-Currently there are four new zone types, one for each of the base game resources:
-* Agriculture
-  * Grain
-  * Livestock
-  * Vegetables
-  * Cotton
-  * Beverages
-  * Convenience Food
-  * Food
-  * Textiles
-* Forestry
-  * Wood
-  * Timber
-  * Paper
-  * Furniture
-* Oil
-  * Oil
-  * Petrochemicals
-  * Chemicals
-  * Pharmaceuticals
-  * Plastics
-  * Electronics
-* Ore
-  * Ore
-  * Coal
-  * Stone
-  * Minerals
-  * Concrete
-  * Steel
-  * Metals
-  * Machinery
-  * Vehicles
+Each zone only attracts companies and buildings that work with that industry's resources. Place Agriculture zones near farms, Oil zones near oil fields, and so on. The normal Industrial zone is untouched, so you can still use it for general industry.
 
-# Compatibility
-This mod is implemented by adding net-new zone prefabs to the game, and copying the base game's set of industrial buildings
-to attach to each zone with filters applied. Since it is only adding new content and re-using all the vanilla systems for spawning,
-it should be compatible with any mod that doesn't disable the vanilla industrial system.
+HOW IT WORKS
+Specialized zones are filtered by the resources a building makes, stores or sells. A company's inputs aren't checked, so a factory that uses imported materials can still appear in a zone that matches its output. The zones are saved in a JSON file you can edit:
+ModsData/ImprovedSpecializedZones/SpecializedZones.json
+
+CHANGES FROM THE ORIGINAL
+- Based on a rework of the original Specialized Industrial Zones.
+- Only the four general zones are created by default. The "Manufacturing only" and "Warehouses only" variants from the original are turned off, which means fewer prefabs for the game to create.
+- Faster prefab scan at startup, and the mod writes timings to its log.
+- Fixes for a few small bugs, including a crash if the mod's files can't be found and an extra reload after a config upgrade.
+
+IMPORTANT
+- This mod REPLACES the original Specialized Industrial Zones. Do not run both at once, because they share the same names.
+- Cities that used the original's "Manufacturing only" or "Warehouses only" zones will lose those zones while they are off.
+- Back up your saves before adding any mod.
+- Tested on Cities: Skylines II version 1.6.2.
+
+CREDITS
+Original mod by DillonN (MIT License):
+https://github.com/DillonN/specialized-industrial-zones
+This version continues his work. His original license and copyright notice are included.
+
+BUG REPORTS
+Please include your game version and the mod's log file from Logs/.
