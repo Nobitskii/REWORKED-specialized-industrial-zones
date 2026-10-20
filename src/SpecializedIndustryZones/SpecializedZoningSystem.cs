@@ -1,4 +1,4 @@
-﻿using Colossal.Logging;
+using Colossal.Logging;
 using Colossal.PSI.Environment;
 using Game;
 using Game.Economy;
@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using Unity.Entities;
 
 namespace SpecializedIndustryZones;
 
@@ -21,6 +22,7 @@ internal partial class SpecializedZoningSystem : GameSystemBase
 
     private readonly Dictionary<ZonePrefab, BuildingPrefab[]> _spawnableBuildingsByZone = [];
     private readonly Dictionary<string, ZonePrefab> _provisionedZones = [];
+    private readonly List<(SpecializedZoneSpec Spec, Entity BaseZone, Entity Zone)> _pendingLabels = [];
 
     private PrefabSystem _prefabSystem = default!;
     private PrefabUISystem _prefabUISystem = default!;
@@ -38,6 +40,10 @@ internal partial class SpecializedZoningSystem : GameSystemBase
     private DateTimeOffset _lastFileCheck;
     private DateTimeOffset _lastFileModifiedTimestamp;
 
+    // New folder name so this does not clash with the original mod's config file.
+    private static readonly string ZoneFilePath = Path.Combine(
+        EnvPath.kUserDataPath, "ModsData", "ImprovedSpecializedZones", "SpecializedZones.json");
+
     protected override void OnCreate()
     {
         base.OnCreate();
@@ -50,18 +56,49 @@ internal partial class SpecializedZoningSystem : GameSystemBase
             ?.GetValue(_prefabSystem) as List<PrefabBase>
             ?? throw new Exception("Could not access m_Prefabs field in PrefabSystem, likely broken by game update");
 
-        _initialZones = [.._allPrefabs.OfType<ZonePrefab>()];
-        foreach (var zone in _initialZones)
+        // ONE pass over all prefabs. The old code did (zones x prefabs x components) work here.
+        var sw = Stopwatch.StartNew();
+        var zones = new List<ZonePrefab>();
+        var buildingsByZone = new Dictionary<ZonePrefab, List<BuildingPrefab>>();
+        var seenZonesForBuilding = new HashSet<ZonePrefab>();
+
+        foreach (var prefab in _allPrefabs)
         {
-            var spawnableBuildings = _allPrefabs
-                .OfType<BuildingPrefab>()
-                .Where(b => b.components.OfType<SpawnableBuilding>().Any(c => c.m_ZoneType == zone))
-                .ToArray();
-            _spawnableBuildingsByZone[zone] = spawnableBuildings;
+            if (prefab is ZonePrefab zonePrefab)
+            {
+                zones.Add(zonePrefab);
+            }
+            else if (prefab is BuildingPrefab building)
+            {
+                seenZonesForBuilding.Clear();
+                foreach (var component in building.components)
+                {
+                    if (component is SpawnableBuilding spawnable &&
+                        spawnable.m_ZoneType != null &&
+                        seenZonesForBuilding.Add(spawnable.m_ZoneType))
+                    {
+                        if (!buildingsByZone.TryGetValue(spawnable.m_ZoneType, out var list))
+                        {
+                            list = [];
+                            buildingsByZone[spawnable.m_ZoneType] = list;
+                        }
+
+                        list.Add(building);
+                    }
+                }
+            }
         }
 
+        _initialZones = [.. zones];
+        foreach (var (zone, list) in buildingsByZone)
+        {
+            _spawnableBuildingsByZone[zone] = [.. list];
+        }
+
+        sw.Stop();
         var zonesText = string.Join('\n', _initialZones.Select(z => z.name));
-        _log.InfoFormat("Loaded {0} zones:\n{1}", _initialZones.Length, zonesText);
+        _log.InfoFormat("Scanned {0} prefabs, found {1} zones in {2} ms:\n{3}",
+            _allPrefabs.Count, _initialZones.Length, sw.ElapsedMilliseconds, zonesText);
     }
 
     protected override void OnUpdate()
@@ -96,7 +133,7 @@ internal partial class SpecializedZoningSystem : GameSystemBase
         _lastFileModifiedTimestamp = lastModified;
         _log.InfoFormat("Reloading specialized zones from file '{0}'.", ZoneFilePath);
         var sw = Stopwatch.StartNew();
-        
+
         var specs = LoadZoneFile();
         if (specs == null)
         {
@@ -107,58 +144,58 @@ internal partial class SpecializedZoningSystem : GameSystemBase
         if (specs.UpgradeIfNeeded())
         {
             SaveZoneFile(specs);
+            // Saving changes the file timestamp; record it so we don't reload everything again 5s later.
+            _lastFileModifiedTimestamp = File.GetLastWriteTimeUtc(ZoneFilePath);
             _log.Info($"Upgraded specialized zone specs to version {specs.Version}.");
         }
 
         var numLoaded = 0;
+        var totalBuildings = 0;
         foreach (var (specID, spec) in specs.Zones)
         {
             try
             {
+                var zoneSw = Stopwatch.StartNew();
+
                 var baseZone = _initialZones.FirstOrDefault(z => z.name == spec.BaseZoneName)
                     ?? throw new Exception($"Base zone '{spec.BaseZoneName}' not found for specialized zone '{spec.Name}'");
                 var combinedFilter = spec.CombinedFilter;
 
-                var existing = false;
-                var success = false;
-                if (!_provisionedZones.TryGetValue(specID, out var zone))
+                var existing = _provisionedZones.ContainsKey(specID);
+                var zone = CreateZonePrefab(specID, spec, baseZone, combinedFilter);
+                if (zone == null)
                 {
-                    zone = CreateZonePrefab(specID, spec, baseZone, combinedFilter);
-                    success = _prefabSystem.AddPrefab(zone);
-                }
-                else
-                {
-                    existing = true;
-                    var replacementZone = CreateZonePrefab(specID, spec, baseZone, combinedFilter);
-                    _prefabSystem.UpdatePrefab(replacementZone);
-                    success = true;
+                    _log.Error($"Failed to create zone prefab: {specID}");
+                    continue;
                 }
 
-                if (zone == null || !success)
+                if (existing)
+                {
+                    _prefabSystem.UpdatePrefab(zone);
+                }
+                else if (!_prefabSystem.AddPrefab(zone))
                 {
                     _log.Error($"Failed to provision zone: {specID}");
                     continue;
                 }
 
-                var buildings = CopyBuildings(specID, spec, zone, baseZone, combinedFilter);
-                foreach (var building in buildings)
+                var clonedBuildings = 0;
+                foreach (var building in CopyBuildings(specID, spec, zone, baseZone, combinedFilter))
                 {
                     try
                     {
                         if (existing)
                         {
                             _prefabSystem.UpdatePrefab(building);
-                            success = true;
+                            clonedBuildings++;
+                        }
+                        else if (_prefabSystem.AddPrefab(building))
+                        {
+                            clonedBuildings++;
                         }
                         else
                         {
-                            success = _prefabSystem.AddPrefab(building);
-                        }
-
-                        if (!success)
-                        {
                             _log.Error($"Failed to add specialized building prefab {building.name} to PrefabSystem. It may already exist or be invalid.");
-                            continue;
                         }
                     }
                     catch (Exception e)
@@ -167,11 +204,14 @@ internal partial class SpecializedZoningSystem : GameSystemBase
                     }
                 }
 
-                ApplyUILabels(spec, baseZone, zone);
+                QueueUILabels(spec, baseZone, zone);
 
                 _provisionedZones[specID] = zone;
-                _log.Debug($"Provisioned zone: {specID} ({spec.Name})");
                 numLoaded++;
+                totalBuildings += clonedBuildings;
+
+                zoneSw.Stop();
+                _log.InfoFormat("Zone {0}: {1} building prefabs in {2} ms.", specID, clonedBuildings, zoneSw.ElapsedMilliseconds);
             }
             catch (Exception e)
             {
@@ -180,11 +220,12 @@ internal partial class SpecializedZoningSystem : GameSystemBase
             }
         }
 
-        sw.Stop();
-        _log.InfoFormat("{0} specialized zones reloaded in {1} ms.", numLoaded, sw.ElapsedMilliseconds);
-    }
+        RegisterUILabels();
 
-    private static readonly string ZoneFilePath = Path.Combine(EnvPath.kUserDataPath, "ModsData", "SpecializedZones", "SpecializedZones.json");
+        sw.Stop();
+        _log.InfoFormat("{0} specialized zones ({1} building prefabs) reloaded in {2} ms.",
+            numLoaded, totalBuildings, sw.ElapsedMilliseconds);
+    }
 
     private SpecializedZoneSpecFile? LoadZoneFile()
     {
@@ -229,6 +270,12 @@ internal partial class SpecializedZoningSystem : GameSystemBase
     {
         foreach (var zone in SpecializedZoneSpecSource.AllZones)
         {
+            // Variant zones (Manufacturing only / Warehouses only) are off by default for faster loading.
+            if (!Mod.IncludeVariantZones && zone.Type != IndustryType.General)
+            {
+                continue;
+            }
+
             var prefix = zone.Type switch
             {
                 IndustryType.General => "Manufacturing and warehouses",
@@ -269,14 +316,7 @@ internal partial class SpecializedZoningSystem : GameSystemBase
         }
     }
 
-    private ZonePrefab? CreateZonePrefab(string specID, SpecializedZoneSpec spec, ZonePrefab sourceZone, SpecializedZoneFilterSpec combinedFilter)
-    {
-        var zone = CreateSpecializedZonePrefab(specID, spec, sourceZone, combinedFilter);
-
-        return zone;
-    }
-
-    private ZonePrefab? CreateSpecializedZonePrefab(
+    private ZonePrefab? CreateZonePrefab(
         string specID,
         SpecializedZoneSpec spec,
         ZonePrefab sourceZone,
@@ -311,6 +351,17 @@ internal partial class SpecializedZoningSystem : GameSystemBase
         return zone;
     }
 
+    private static bool Overlaps(ResourceInEditor[]? source, HashSet<ResourceInEditor> filter)
+    {
+        if (source == null || filter.Count == 0) return false;
+        foreach (var r in source)
+        {
+            if (filter.Contains(r)) return true;
+        }
+
+        return false;
+    }
+
     private IEnumerable<BuildingPrefab> CopyBuildings(
         string specID,
         SpecializedZoneSpec spec,
@@ -324,13 +375,18 @@ internal partial class SpecializedZoningSystem : GameSystemBase
             yield break;
         }
 
+        // Null filters are treated as empty here (the original threw on null).
+        var manufacturedFilter = new HashSet<ResourceInEditor>(combinedFilter.ManufacturedResources ?? Enumerable.Empty<ResourceInEditor>());
+        var soldFilter = new HashSet<ResourceInEditor>(combinedFilter.SoldResources ?? Enumerable.Empty<ResourceInEditor>());
+        var storedFilter = new HashSet<ResourceInEditor>(combinedFilter.StoredResources ?? Enumerable.Empty<ResourceInEditor>());
+
         foreach (var sourceBuilding in buildings)
         {
             if (sourceBuilding.TryGet<BuildingProperties>(out var sourceBuildingProperties))
             {
-                var hasRelevantManufactured = sourceBuildingProperties.m_AllowedManufactured.Intersect(combinedFilter.ManufacturedResources).Any();
-                var hasRelevantSold = sourceBuildingProperties.m_AllowedSold.Intersect(combinedFilter.SoldResources).Any();
-                var hasRelevantStored = sourceBuildingProperties.m_AllowedStored.Intersect(combinedFilter.StoredResources).Any();
+                var hasRelevantManufactured = Overlaps(sourceBuildingProperties.m_AllowedManufactured, manufacturedFilter);
+                var hasRelevantSold = Overlaps(sourceBuildingProperties.m_AllowedSold, soldFilter);
+                var hasRelevantStored = Overlaps(sourceBuildingProperties.m_AllowedStored, storedFilter);
 
                 if (!hasRelevantManufactured && !hasRelevantSold && !hasRelevantStored)
                 {
@@ -340,19 +396,16 @@ internal partial class SpecializedZoningSystem : GameSystemBase
 
                 if (combinedFilter.RequireManufactured == true && !hasRelevantManufactured)
                 {
-                    // If the specialization requires manufactured resources, skip buildings that don't have them
                     continue;
                 }
 
                 if (combinedFilter.RequireSold == true && !hasRelevantSold)
                 {
-                    // If the specialization requires sold resources, skip buildings that don't have them
                     continue;
                 }
 
                 if (combinedFilter.RequireStored == true && !hasRelevantStored)
                 {
-                    // If the specialization requires stored resources, skip buildings that don't have them
                     continue;
                 }
             }
@@ -371,9 +424,9 @@ internal partial class SpecializedZoningSystem : GameSystemBase
             if (building.TryGet<BuildingProperties>(out var buildingProperties))
             {
                 if (combinedFilter.ManufacturedResources != null)
-                    buildingProperties.m_AllowedManufactured = [..combinedFilter.ManufacturedResources.Intersect(buildingProperties.m_AllowedManufactured)];
+                    buildingProperties.m_AllowedManufactured = [.. combinedFilter.ManufacturedResources.Intersect(buildingProperties.m_AllowedManufactured)];
                 if (combinedFilter.StoredResources != null)
-                    buildingProperties.m_AllowedStored = [..combinedFilter.StoredResources.Intersect(buildingProperties.m_AllowedStored)];
+                    buildingProperties.m_AllowedStored = [.. combinedFilter.StoredResources.Intersect(buildingProperties.m_AllowedStored)];
                 if (combinedFilter.SoldResources != null)
                     buildingProperties.m_AllowedSold = [.. combinedFilter.SoldResources.Intersect(buildingProperties.m_AllowedSold)];
             }
@@ -384,7 +437,8 @@ internal partial class SpecializedZoningSystem : GameSystemBase
         }
     }
 
-    private void ApplyUILabels(SpecializedZoneSpec spec, ZonePrefab industrialZone, ZonePrefab zone)
+    // Records label info per zone; actual registration happens once per reload in RegisterUILabels.
+    private void QueueUILabels(SpecializedZoneSpec spec, ZonePrefab industrialZone, ZonePrefab zone)
     {
         if (!_prefabSystem.TryGetEntity(zone, out var zoneEntity))
         {
@@ -398,16 +452,25 @@ internal partial class SpecializedZoningSystem : GameSystemBase
             return;
         }
 
-        var dictionary = new SpecializedIndustrialZoneLocaleDictionary(
-            spec,
-            industrialZoneEntity,
-            zoneEntity,
-            _prefabUISystem,
-            _log);
+        _pendingLabels.Add((spec, industrialZoneEntity, zoneEntity));
+    }
 
+    private void RegisterUILabels()
+    {
+        if (_pendingLabels.Count == 0) return;
+
+        var source = new SpecializedIndustrialZoneLocaleSource(_prefabUISystem, _log);
+        foreach (var (spec, baseZone, zone) in _pendingLabels)
+        {
+            source.Add(spec, baseZone, zone);
+        }
+
+        _pendingLabels.Clear();
+
+        // One source per language, instead of one per zone per language.
         foreach (var localeId in GameManager.instance.localizationManager.GetSupportedLocales())
         {
-            GameManager.instance.localizationManager.AddSource(localeId, dictionary);
+            GameManager.instance.localizationManager.AddSource(localeId, source);
         }
     }
 
