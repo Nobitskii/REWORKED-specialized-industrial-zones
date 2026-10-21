@@ -1,4 +1,4 @@
-﻿using Game.Economy;
+using Game.Economy;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -6,7 +6,8 @@ namespace SpecializedIndustryZones;
 
 public class SpecializedZoneSpecFile
 {
-    public static readonly string CurrentVersion = "v1alpha2";
+    // Bumped from v1alpha2 so older config files are upgraded and get the missing variant zones added once.
+    public static readonly string CurrentVersion = "v1alpha3";
 
     public string Version { get; set; } = CurrentVersion;
 

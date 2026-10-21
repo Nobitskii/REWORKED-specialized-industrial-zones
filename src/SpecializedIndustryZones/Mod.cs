@@ -14,9 +14,9 @@ namespace SpecializedIndustryZones
         public static ILog log = LogManager.GetLogger($"{nameof(SpecializedIndustryZones)}.{nameof(Mod)}").SetShowsErrorsInUI(false);
 
         // The original mod created 12 zones (4 industries x General / Manufacturing only / Warehouses only).
-        // Every zone clones every matching building, so 12 zones means ~3x the prefab work of 4 zones.
-        // Set to true to get the extra 8 variant zones back (slower loading).
-        public const bool IncludeVariantZones = false;
+        // Each switch below controls one of the two variant types. Set one to false to leave those 4 zones out.
+        public static readonly bool IncludeWarehousesOnlyZones = true;
+        public static readonly bool IncludeManufacturingOnlyZones = false;
 
         public void OnLoad(UpdateSystem updateSystem)
         {

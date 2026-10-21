@@ -143,10 +143,11 @@ internal partial class SpecializedZoningSystem : GameSystemBase
 
         if (specs.UpgradeIfNeeded())
         {
+            var added = AddMissingVariantZones(specs);
             SaveZoneFile(specs);
             // Saving changes the file timestamp; record it so we don't reload everything again 5s later.
             _lastFileModifiedTimestamp = File.GetLastWriteTimeUtc(ZoneFilePath);
-            _log.Info($"Upgraded specialized zone specs to version {specs.Version}.");
+            _log.Info($"Upgraded specialized zone specs to version {specs.Version}, added {added} variant zone(s).");
         }
 
         var numLoaded = 0;
@@ -266,12 +267,35 @@ internal partial class SpecializedZoningSystem : GameSystemBase
         }
     }
 
+    // Used once when an older config file is upgraded: adds variant zones it doesn't have yet.
+    // Zones already in the file (including ones the user edited) are left alone.
+    private int AddMissingVariantZones(SpecializedZoneSpecFile specs)
+    {
+        var added = 0;
+        foreach (var (specID, spec) in GenerateDefaultSpecs())
+        {
+            if (specID.EndsWith("General") || specs.Zones.ContainsKey(specID))
+            {
+                continue;
+            }
+
+            specs.Zones[specID] = spec;
+            added++;
+        }
+
+        return added;
+    }
+
     private IEnumerable<(string, SpecializedZoneSpec)> GenerateDefaultSpecs()
     {
         foreach (var zone in SpecializedZoneSpecSource.AllZones)
         {
-            // Variant zones (Manufacturing only / Warehouses only) are off by default for faster loading.
-            if (!Mod.IncludeVariantZones && zone.Type != IndustryType.General)
+            if (zone.Type == IndustryType.Warehouses && !Mod.IncludeWarehousesOnlyZones)
+            {
+                continue;
+            }
+
+            if (zone.Type == IndustryType.Manufacturing && !Mod.IncludeManufacturingOnlyZones)
             {
                 continue;
             }
