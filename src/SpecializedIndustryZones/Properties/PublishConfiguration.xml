@@ -1,69 +1,60 @@
-﻿<Publish>
-	<!--Id must be set in order to update existed mod. it is not required for publishing mod for the first time-->
-	<!--Prod listing-->
-	<!--<ModId Value="106939" />-->
-	<!--Dev listing-->
-	<ModId Value="113675" />
-	<!--Name of the mod to display to players-->
-	<DisplayName Value="Specialized Industrial Zones [alpha]" />
-	<!--Short description of the mod-->
-	<ShortDescription Value="Enable zoning of specific industries" />
-	<!--Long description of the mod. Single line or multi line. Supports minimal markdown subset-->
+<Publish>
+    <ModId Value="164148" /> 
+	<DisplayName Value="Reworked Specialized Industrial Zones [BETA]" />
+	<ShortDescription Value="Specialized industrial zones for Forestry, Agriculture, Ore and Oil. Beta, testers wanted." />
 	<LongDescription>
-# Specialized Industrial Zones
+# Reworked Specialized Industrial Zones (BETA)
 
-# Alpha version
-This is the alpha version of the mod, see [Specialized Industrial Zones](https://mods.paradoxplaza.com/mods/106939/Windows) for the stable version.
+**BETA: this mod needs more testing. Please back up your saves and report any problems.**
 
-This version is unstable and may contain bugs.
+Adds specialized industrial zones so you can zone industry for one resource chain instead of all of it.
 
-# 0.3-alpha updates
+## Zones
+* Forestry
+* Agriculture
+* Ore
+* Oil
 
-## Custom zones
+Each zone only attracts companies and buildings that work with that industry's resources. Place Agriculture zones near farms, Oil zones near oil fields, and so on. The normal Industrial zone is untouched, so you can still use it for general industry.
 
-The zone types are now driven by a JSON file in the mod data folder - `C:\Users\{user}\AppData\LocalLow\Colossal Order\Cities Skylines II\ModsData\SpecializedZones\SpecializedZones.json`.
+## How it works
+Zones are filtered by the resources a building makes, stores or sells. A company's inputs are not checked, so a factory that uses imported materials can still appear in a zone that matches its output.
 
-You can edit this file and the game will live update. **NOTE THIS IS HIGHLY EXPERIMENTAL!** 
+The zones are saved in a JSON file you can edit (highly experimental):
+`C:\Users\{user}\AppData\LocalLow\Colossal Order\Cities Skylines II\ModsData\ImprovedSpecializedZones\SpecializedZones.json`
 
-Current limitations:
-* If you delete or change the ID of a zone, any placements of that zone will have the same behaviour as when uninstalling the mod
-  * The zone is removed, buildings change to white boxes and get flagged as condemned, eventually auto-demolished.
-* There is no UI yet but that is planned before 0.3 final release.
-* JSON file schema is subject to change.
-* Commercial zones can be used as the base zones, but haven't been tested much yet.
-  * They can be used by setting `BaseZoneName` to e.g. `NA Commercial Low`.
-  * The mod logs all available base zone names during initialization, Skyve is recommended for viewing (search `SpecializedIndustryZones.Mod`).
-  * Other zone types such as `Office High` can be used too, but there's zero testing for those.
-* If defined, `IconUri` has to point to a valid file in the game's internal UI host; you can leave it out of the definition to inherit the base zone's icon.
-* When you update filters, any non-conforming buildings that have spawned will see the companies move out and eventually get marked as abandoned.
-  * Note the game does not automatically demolish abandoned buildings.
+## Changes from the original
+* Only the four general zones are created by default. The "Manufacturing only" and "Warehouses only" variants are turned off, which means fewer prefabs for the game to create.
+* Faster prefab scan at startup, and the mod writes timings to its log.
+* Fixes for a few small bugs, including a crash if the mod's files can't be found and an extra reload after a config upgrade.
 
+## Help me test
+This is a beta and I have only tested it on my own setup (game version 1.6.2). I would love to hear from you, especially if you have saves made with the original mod, lots of other mods, or a big city with slow load times.
+
+Things I want to know:
+* Do all four zones grow buildings?
+* Does your save load, and do the buildings stay after you save and reload?
+* How long does your save take to load compared to the original mod?
+* Did anything break, vanish or show errors?
+
+When reporting a problem, please include your game version, your other mods if you can, and this mod's log file from the Logs folder.
+
+## Important
+* This mod REPLACES the original Specialized Industrial Zones. Do not run both at once, because they share the same names.
+* Cities that used the original's "Manufacturing only" or "Warehouses only" zones will lose those zones while they are off.
+* Back up your saves before adding any mod.
+
+## Credits
+Original mod by DillonN (MIT License): [Specialized Industrial Zones](https://mods.paradoxplaza.com/mods/106939/Windows). This version continues his work, and his original license and copyright notice are included.
 	</LongDescription>
-	<!--Thumbnail-->
 	<Thumbnail Value="Properties/Thumbnail.png" />
-	<!--Screenshot, can be set multiple times-->
-	<Screenshot Value="Properties/Screenshot1.jpg" />
-	<Screenshot Value="Properties/Screenshot2.jpg" />
-	<Screenshot Value="Properties/Screenshot3.jpg" />
-	<Screenshot Value="Properties/Screenshot4.jpg" />
-	<Screenshot Value="Properties/Screenshot5.jpg" />
-	<!--Tag, can be set multiple times-->
-	<Tag Value="" />
-	<!--Link to the forum post where the mod can be discussed-->
-	<ForumLink Value="https://forum.paradoxplaza.com/forum/threads/specialized-industrial-zones.1737148/" />
-	<!--Version of the mod-->
-	<ModVersion Value="0.3.0-alpha.5" />
-	<!--Recommended version of the base game to use the mod-->
-	<GameVersion Value="1.5.*" />
-	<!--Dependency for the mod, can be set multiple times-->
-	<Dependency Id="" />
-	<!--Required DLC, can be set multiple times. Supported values are "Landmark Buildings", "San Fransisco Set", "Beach Properties", "Urban Promenades", "Modern Architecture"-->
-	<RequiredDLC Value="" />
-	<!--Change log for new version. Single line or multi line. Supports minimal markdown subset-->
+	<Screenshot Value="Properties/Screenshot1.png" />
+	<ModVersion Value="0.1.0-beta.1" />
+	<GameVersion Value="1.6.*" />
 	<ChangeLog>
-# Improvements
-* Rebuild for game version 1.5
-    </ChangeLog>
-	<!--External link, can be set multiple times. supported types are "discord", "github", "youtube", "twitch", "x", "paypal", "patreon", "buymeacoffee", "kofi", "crowdin", "gitlab", "gofundme"-->
-	<ExternalLink Type="github" Url="https://github.com/DillonN/specialized-industrial-zones" />
+# First beta
+* Rework of Specialized Industrial Zones by DillonN
+* Four general zones by default, faster prefab scan, bug fixes
+	</ChangeLog>
+	<ExternalLink Type="github" Url="https://github.com/Nobitskii/reworked-specialized-industrial-zones" />
 </Publish>
