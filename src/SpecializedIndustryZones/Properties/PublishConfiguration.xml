@@ -1,5 +1,5 @@
 <Publish>
-    <ModId Value="164148" /> 
+	<ModId Value="164148" />
 	<DisplayName Value="Reworked Specialized Industrial Zones [BETA]" />
 	<ShortDescription Value="Specialized industrial zones for Forestry, Agriculture, Ore and Oil. Beta, testers wanted." />
 	<LongDescription>
@@ -7,9 +7,12 @@
 
 **BETA: this mod needs more testing. Please back up your saves and report any problems.**
 
+Tested with 60+ mods in a city of around 400K population.
+
 Adds specialized industrial zones so you can zone industry for one resource chain instead of all of it.
 
 ## Zones
+Four industries, each with a General zone and a Warehouses-only zone:
 * Forestry
 * Agriculture
 * Ore
@@ -24,15 +27,15 @@ The zones are saved in a JSON file you can edit (highly experimental):
 `C:\Users\{user}\AppData\LocalLow\Colossal Order\Cities Skylines II\ModsData\ImprovedSpecializedZones\SpecializedZones.json`
 
 ## Changes from the original
-* Only the four general zones are created by default. The "Manufacturing only" and "Warehouses only" variants are turned off, which means fewer prefabs for the game to create.
+* Four General zones plus four Warehouses-only zones are created by default. The Manufacturing-only variants from the original are turned off, which means fewer prefabs for the game to create.
 * Faster prefab scan at startup, and the mod writes timings to its log.
 * Fixes for a few small bugs, including a crash if the mod's files can't be found and an extra reload after a config upgrade.
 
 ## Help me test
-This is a beta and I have only tested it on my own setup (game version 1.6.2). I would love to hear from you, especially if you have saves made with the original mod, lots of other mods, or a big city with slow load times.
+This is a beta. I would love to hear from you, especially if you have saves made with the original mod, lots of other mods, or a big city with slow load times.
 
 Things I want to know:
-* Do all four zones grow buildings?
+* Do all zones grow buildings?
 * Does your save load, and do the buildings stay after you save and reload?
 * How long does your save take to load compared to the original mod?
 * Did anything break, vanish or show errors?
@@ -41,7 +44,7 @@ When reporting a problem, please include your game version, your other mods if y
 
 ## Important
 * This mod REPLACES the original Specialized Industrial Zones. Do not run both at once, because they share the same names.
-* Cities that used the original's "Manufacturing only" or "Warehouses only" zones will lose those zones while they are off.
+* Cities that used the original's "Manufacturing only" zones will lose those zones while they are off.
 * Back up your saves before adding any mod.
 
 ## Credits
@@ -49,12 +52,18 @@ Original mod by DillonN (MIT License): [Specialized Industrial Zones](https://mo
 	</LongDescription>
 	<Thumbnail Value="Properties/Thumbnail.png" />
 	<Screenshot Value="Properties/Screenshot1.png" />
-	<ModVersion Value="0.1.0-beta.1" />
+	<Screenshot Value="Properties/Screenshot2.png" />
+	<Screenshot Value="Properties/Screenshot3.png" />
+	<Screenshot Value="Properties/Screenshot4.png" />
+	<Screenshot Value="Properties/Screenshot5.png" />
+	<ModVersion Value="0.1.0-beta.2" />
+	<ForumLink Value="https://forum.paradoxplaza.com/forum/threads/reworked-specialized-industrial-zones-beta.1946537/" />
 	<GameVersion Value="1.6.*" />
 	<ChangeLog>
-# First beta
-* Rework of Specialized Industrial Zones by DillonN
-* Four general zones by default, faster prefab scan, bug fixes
+# 0.1.0-beta.2
+* Added Warehouses-only zones back (4 new zones)
+* Old config files are upgraded automatically
+* New screenshots
 	</ChangeLog>
 	<ExternalLink Type="github" Url="https://github.com/Nobitskii/reworked-specialized-industrial-zones" />
 </Publish>
